@@ -1,32 +1,32 @@
 package main
 
 import (
-	"os"
-	"fmt"
 	"flag"
+	"fmt"
+	"os"
 )
 
 type Config struct {
-	IndexDomain string
+	IndexDomain    string
 	RegistryDomain string
 }
 
 type command struct {
-	name string
+	name     string
 	argsdesc string
-	desc string
-	nargs int
-	fn func (*Config, []string)
+	desc     string
+	nargs    int
+	fn       func(*Config, []string)
 }
 
-var commands = [...]command {
+var commands = [...]command{
 	command{"info", "<repos_name>", "lookup repos meta-data", 1, CmdInfo},
 	command{"layerinfo", "<repos_name> <layer_id>", "lookup layer meta-data", 2, CmdLayerInfo},
 	command{"curlme", "<repos_name> <layer_id>", "print a curl command for fetching the layer", 2, CmdCurlme},
 }
 
 func OptParse() {
-	flag.Usage = func () {
+	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] command\n", os.Args[0])
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "options:")
@@ -39,17 +39,20 @@ func OptParse() {
 	}
 
 	config := &Config{}
-	flag.StringVar(&config.RepositoryName, "repos", "", "repository name (\"foo/bar\")")
-	flag.StringVar(&config.ImageId, "image", "", "image id to test (64 chars long)")
-	flag.StringVar(&config.IndexDomain, "index", "https://index.docker.io", "override index endpoint")
-	flag.StringVar(&config.RegistryDomain, "registry", "", "override registry endpoint")
+	flag.StringVar(&config.IndexDomain, "i", "https://index.docker.io", "override index endpoint")
+	flag.StringVar(&config.RegistryDomain, "r", "", "override registry endpoint")
+	flag.BoolVar(&Quiet, "q", false, "disable debug logs")
 	flag.Parse()
 
 	for _, c := range commands {
 		if flag.Arg(0) == c.name {
 			args := flag.Args()[1:]
 			if len(args) != c.nargs {
-				fmt.Fprintf(os.Stderr, "%s takes %d arguments: %s\n", c.name, c.nargs, c.argsdesc)
+				s := ""
+				if c.nargs > 1 {
+					s = "s"
+				}
+				fmt.Fprintf(os.Stderr, "%s takes %d argument%s: %s\n", c.name, c.nargs, s, c.argsdesc)
 				os.Exit(2)
 			}
 			c.fn(config, args)
@@ -59,4 +62,3 @@ func OptParse() {
 	flag.Usage()
 	os.Exit(2)
 }
-
