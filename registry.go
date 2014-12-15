@@ -27,23 +27,35 @@ type LayerJson struct {
 }
 
 func NewRegistry(endpoint string, registryDomain string) (*Registry, error) {
-	u, e := url.Parse(endpoint)
+	if endpoint == "" && registryDomain == "" {
+		return nil, fmt.Errorf("needs a registry endpoint when index endpoint is missing")
+	}
+	parseEndpoint := func(endpoint string) (*url.URL, error) {
+		if endpoint != "" {
+			u, e := url.Parse(endpoint)
+			if e != nil {
+				return nil, e
+			}
+			if u.Host == "" {
+				u.Host = u.Path
+			}
+			return u, nil
+		}
+		return nil, nil
+	}
+	host := ""
+	origUrl, e := parseEndpoint(endpoint)
 	if e != nil {
 		return nil, e
 	}
-	if u.Host == "" {
-		u.Host = u.Path
+	if origUrl != nil {
+		host = fmt.Sprintf("%s://%s", origUrl.Scheme, origUrl.Host)
 	}
-	origUrl := u
-	host := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 	registryHost := ""
 	if registryDomain != "" {
-		u, e = url.Parse(registryDomain)
+		u, e := parseEndpoint(registryDomain)
 		if e != nil {
 			return nil, e
-		}
-		if u.Host == "" {
-			u.Host = u.Path
 		}
 		registryHost = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 	}
@@ -63,6 +75,9 @@ func (reg *Registry) log(format string, args ...interface{}) {
 }
 
 func (reg *Registry) GetToken(username string, password string, reposName string) (string, error) {
+	if reg.Host == "" {
+		return "", nil
+	}
 	u := fmt.Sprintf("%s/v1/repositories/%s/images", reg.Host, reposName)
 	req, e := http.NewRequest("GET", u, nil)
 	if e != nil {
